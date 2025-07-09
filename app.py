@@ -60,19 +60,76 @@ promo_df = st.session_state.get("promo_df")
 
 tabs = st.tabs([
     "📘 Instructions", 
-                # ← New tab here
-    "🧬 Customer Profiler", 
-    "🧭 Customer Journey Mapping", 
-    "🏷️ Discount Effectiveness", 
-    "📊 RFM Segmentation", 
-    "📊 Sales Analytics",
     "🗂️ File Mapping",
+    "📊 Sales Analytics",                                
+    "📊 RFM Segmentation", 
+    "🏷️ Discount Effectiveness",  
+    "🧬 Customer Profiler", 
+    "🧭 Customer Journey Mapping",   
     "🔍 Sub-Category Drilldown Analysis"     
 ])
 
+# TAB 1: Instructions
+with tabs[0]:
+    st.subheader("📘 Instructions & User Guide")
+    st.markdown("""
+    Welcome to the **Retail Analytics Dashboard**. Please follow the steps below:
+    - 📁 Upload your data files from the **sidebar**
+    - Navigate through tabs to run analysis
+    - Use buttons to trigger specific modules
+    - Download results wherever applicable
+    """)
 
-# TAB 1: RFM Segmentation
-with tabs[4]:
+# TAB 2: File Mapping
+with tabs[1]:
+    st.subheader("🗂️ File Mapping & Confirmation")
+
+    if uploaded_files:
+        st.markdown("### 🧩 Column Mapping for Each File")
+
+        if not st.session_state.get("files_mapped"):
+            mapped_data = classify_and_extract_data(uploaded_files)
+
+            if mapped_data:
+                # Only now save to session
+                st.session_state['txns_df'] = mapped_data.get("Transactions")
+                st.session_state['cust_df'] = mapped_data.get("Customers")
+                st.session_state['prod_df'] = mapped_data.get("Products")
+                st.session_state['promo_df'] = mapped_data.get("Promotions")
+                st.session_state["files_mapped"] = True
+                st.rerun()
+        else:
+            # Preview mapped data
+            with st.expander("📄 Transactions Sample"):
+                st.dataframe(st.session_state["txns_df"].head(10) if st.session_state["txns_df"] is not None else "⚠️ Transactions data not mapped.")
+            with st.expander("📄 Customers Sample"):
+                st.dataframe(st.session_state["cust_df"].head(10) if st.session_state["cust_df"] is not None else "⚠️ Customers data not mapped.")
+            with st.expander("📄 Products Sample"):
+                st.dataframe(st.session_state["prod_df"].head(10) if st.session_state["prod_df"] is not None else "⚠️ Products data not mapped.")
+            with st.expander("📄 Promotions Sample"):
+                st.dataframe(st.session_state["promo_df"].head(10) if st.session_state["promo_df"] is not None else "⚠️ Promotions data not mapped.")
+
+    else:
+        st.info("👈 Please upload your CSV files from the sidebar to start mapping.")
+
+# TAB 3: Sales Analytics
+with tabs[2]:
+    st.subheader("📊 Sales Analytics Overview")
+    if txns_df is None:
+        st.warning("📂 Please upload the Transactions CSV file to begin.")
+    else:
+        if "start_sales_analysis" not in st.session_state:
+            st.session_state.start_sales_analysis = False
+
+        if not st.session_state.start_sales_analysis:
+            if st.button("▶️ Start Sales Analytics"):
+                st.session_state.start_sales_analysis = True
+                st.rerun()
+        else:
+            render_sales_analytics(txns_df)
+
+# TAB 4: RFM Segmentation
+with tabs[3]:
     st.subheader("🚦 RFM Segmentation Analysis")
     if txns_df is None:
         st.warning("⚠️ Please upload the Transactions CSV file to proceed.")
@@ -115,10 +172,24 @@ with tabs[4]:
                 except Exception as e:
                     st.error(f"⚠️ Error generating message: {e}")
 
+# TAB 5: Discount Mapping
+with tabs[4]:
+    st.subheader("🏷️ Discount Campaign Performance & Uplift Analysis")
+    if promo_df is not None and txns_df is not None:
+        if st.button("▶️ Analyze Discount Impact"):
+            if 'Offer_Code' not in promo_df.columns:
+                promo_df = assign_offer_codes(promo_df)
+            discount_output = generate_discount_insights(txns_df, promo_df)
+            st.markdown("### 📊 Uplift Summary by Offer & Sub-Category")
+            st.dataframe(discount_output['uplift_summary'])
+            st.download_button("📥 Download Uplift Summary", discount_output['uplift_summary'].to_csv(index=False), "discount_uplift.csv")
+            st.markdown("---")
+            st.markdown(discount_output['recommendations'])
+    else:
+        st.info("📎 Please upload both the Promotions and Transactions CSV files.")
 
-
-# TAB 2: Customer Profiler
-with tabs[1]:
+# TAB 6: Customer Profiler
+with tabs[5]:
     st.subheader("👤 Customer Profiler")
     if not all([txns_df is not None, cust_df is not None, prod_df is not None]):
         st.warning("Please upload Transactions, Customers, and Products CSVs.")
@@ -132,8 +203,8 @@ with tabs[1]:
             else:
                 st.error("No data found for this customer.")
 
-# TAB 3: Customer Journey Mapping
-with tabs[2]:
+# TAB 7: Customer Journey Mapping
+with tabs[6]:
     st.subheader("🧭 Customer Journey Mapping & Product Affinity")
     if txns_df is None:
         st.warning("🚨 Please upload the Transactions CSV to proceed.")
@@ -158,82 +229,7 @@ with tabs[2]:
             else:
                 st.warning(f"❗ No valid journey path found for Customer ID {customer_id}. Try another.")
 
-# TAB 4: Discount Mapping
-with tabs[3]:
-    st.subheader("🏷️ Discount Campaign Performance & Uplift Analysis")
-    if promo_df is not None and txns_df is not None:
-        if st.button("▶️ Analyze Discount Impact"):
-            if 'Offer_Code' not in promo_df.columns:
-                promo_df = assign_offer_codes(promo_df)
-            discount_output = generate_discount_insights(txns_df, promo_df)
-            st.markdown("### 📊 Uplift Summary by Offer & Sub-Category")
-            st.dataframe(discount_output['uplift_summary'])
-            st.download_button("📥 Download Uplift Summary", discount_output['uplift_summary'].to_csv(index=False), "discount_uplift.csv")
-            st.markdown("---")
-            st.markdown(discount_output['recommendations'])
-    else:
-        st.info("📎 Please upload both the Promotions and Transactions CSV files.")
-
-# TAB 5: Sales Analytics
-with tabs[5]:
-    st.subheader("📊 Sales Analytics Overview")
-    if txns_df is None:
-        st.warning("📂 Please upload the Transactions CSV file to begin.")
-    else:
-        if "start_sales_analysis" not in st.session_state:
-            st.session_state.start_sales_analysis = False
-
-        if not st.session_state.start_sales_analysis:
-            if st.button("▶️ Start Sales Analytics"):
-                st.session_state.start_sales_analysis = True
-                st.rerun()
-        else:
-            render_sales_analytics(txns_df)
-
-# TAB 0: Instructions
-with tabs[0]:
-    st.subheader("📘 Instructions & User Guide")
-    st.markdown("""
-    Welcome to the **Retail Analytics Dashboard**. Please follow the steps below:
-    - 📁 Upload your data files from the **sidebar**
-    - Navigate through tabs to run analysis
-    - Use buttons to trigger specific modules
-    - Download results wherever applicable
-    """)
-
-# TAB 7: File Mapping
-with tabs[6]:
-    st.subheader("🗂️ File Mapping & Confirmation")
-
-    if uploaded_files:
-        st.markdown("### 🧩 Column Mapping for Each File")
-
-        if not st.session_state.get("files_mapped"):
-            mapped_data = classify_and_extract_data(uploaded_files)
-
-            if mapped_data:
-                # Only now save to session
-                st.session_state['txns_df'] = mapped_data.get("Transactions")
-                st.session_state['cust_df'] = mapped_data.get("Customers")
-                st.session_state['prod_df'] = mapped_data.get("Products")
-                st.session_state['promo_df'] = mapped_data.get("Promotions")
-                st.session_state["files_mapped"] = True
-                st.rerun()
-        else:
-            # Preview mapped data
-            with st.expander("📄 Transactions Sample"):
-                st.dataframe(st.session_state["txns_df"].head(10) if st.session_state["txns_df"] is not None else "⚠️ Transactions data not mapped.")
-            with st.expander("📄 Customers Sample"):
-                st.dataframe(st.session_state["cust_df"].head(10) if st.session_state["cust_df"] is not None else "⚠️ Customers data not mapped.")
-            with st.expander("📄 Products Sample"):
-                st.dataframe(st.session_state["prod_df"].head(10) if st.session_state["prod_df"] is not None else "⚠️ Products data not mapped.")
-            with st.expander("📄 Promotions Sample"):
-                st.dataframe(st.session_state["promo_df"].head(10) if st.session_state["promo_df"] is not None else "⚠️ Promotions data not mapped.")
-
-    else:
-        st.info("👈 Please upload your CSV files from the sidebar to start mapping.")
-
-# TAB 6: Sub-Category Drilldown Analysis
+# TAB 8: Sub-Category Drilldown Analysis
 with tabs[7]:
     st.subheader("🔍 Sub-Category Drilldown Analysis")
 
