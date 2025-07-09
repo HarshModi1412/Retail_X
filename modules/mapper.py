@@ -20,7 +20,7 @@ def read_csv_with_encoding(file):
 REQUIRED_FIELDS = {
     "Transactions": {
         "Invoice ID": ["invoice_id", "bill_no", "invoice number", "InvoiceNo", "Invoice No",'orderid','order id','order_id'],
-        "Date": ["date", "invoice_date", "purchase_date", "Invoicedate",'orderdate'],
+        "Date": ["date", "invoice_date", "purchase_date", "Invoicedate",'orderdate','order date'],
         "Sub Category": ["subcat", "product_type", "subcategory","sub-category"],
         "Invoice Total": ["amount", "invoice_amount", "total_amount", "grand_total"],
         "Quantity": ["qty", "units", "number of items"],
