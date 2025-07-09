@@ -2,11 +2,25 @@ import streamlit as st
 import pandas as pd
 from collections import defaultdict
 
+
+import chardet
+
+
+def read_csv_with_encoding(file):
+    raw_bytes = file.read()
+    result = chardet.detect(raw_bytes)
+    encoding = result['encoding'] or 'utf-8'
+    file.seek(0)
+
+    return pd.read_csv(file, encoding=encoding, encoding_errors='replace')
+
+
+
 # Canonical field dictionary with aliases
 REQUIRED_FIELDS = {
     "Transactions": {
         "Invoice ID": ["invoice_id", "bill_no", "invoice number", "InvoiceNo", "Invoice No",'orderid','order id','order_id'],
-        "Date": ["date", "invoice_date", "purchase_date", "Invoicedate",'orderdate','order date'],
+        "Date": ["date", "invoice_date", "purchase_date", "Invoicedate",'orderdate'],
         "Sub Category": ["subcat", "product_type", "subcategory","sub-category"],
         "Invoice Total": ["amount", "invoice_amount", "total_amount", "grand_total"],
         "Quantity": ["qty", "units", "number of items"],
@@ -50,21 +64,33 @@ def normalize(col: str) -> str:
 def build_column_inventory(files):
     inventory = defaultdict(list)
     file_dfs = []
+
     for file in files:
         try:
-            if file.name.endswith(".csv"):
-                df = pd.read_csv(file)
-            elif file.name.endswith(".xlsx"):
+            # Detect file format
+            file_ext = file.name.lower().split('.')[-1]
+
+            # Load file with encoding handling
+            if file_ext == "csv":
+                df = read_csv_with_encoding(file)
+            elif file_ext in ("xlsx", "xls"):
                 df = pd.read_excel(file, engine="openpyxl")
             else:
                 st.warning(f"⚠️ Unsupported file format: {file.name}")
                 continue
+
+            # Store loaded file and its columns
             file_dfs.append((file.name, df))
             for col in df.columns:
-                inventory[normalize(col)].append((file.name, col, df[col]))
+                normalized = normalize(col)
+                inventory[normalized].append((file.name, col, df[col]))
+
         except Exception as e:
             st.error(f"❌ Error reading {file.name}: {e}")
+
     return inventory, file_dfs
+
+
 
 def auto_map_fields(role, inventory):
     mapping = {}
@@ -143,3 +169,5 @@ def classify_and_extract_data(uploaded_files):
         return final_data
 
     return None
+
+
