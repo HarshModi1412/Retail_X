@@ -226,22 +226,32 @@ def render_sales_analytics(txns_df):
 def render_subcategory_trends(txns_df):
     st.subheader("📌 Sub-Category Trends Dashboard")
 
+    if txns_df is None or txns_df.empty:
+        st.warning("Please upload transaction data.")
+        return
+
     df = txns_df.copy()
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
     df = df.dropna(subset=['Date'])
+
+    # Extract month and day of week
     df['Month'] = df['Date'].dt.to_period('M').astype(str)
     df['DayOfWeek'] = df['Date'].dt.day_name()
 
-    df['Transaction Type'] = df['Transaction Type'].astype(str).str.lower().str.strip()
-    sales_df = df[df['Transaction Type'] == 'sale'].copy()
+    # Optional: Filter to sales only if Transaction Type column exists
+    if 'Transaction Type' in df.columns:
+        df['Transaction Type'] = df['Transaction Type'].astype(str).str.lower().str.strip()
+        if df['Transaction Type'].str.contains('sale').any():
+            df = df[df['Transaction Type'].str.contains('sale', na=False)]
 
-    subcats = sorted(sales_df['Sub Category'].dropna().unique())
-    if not subcats:
-        st.warning("No valid sub-categories found.")
+    # Check for Sub Category
+    if 'Sub Category' not in df.columns or df['Sub Category'].dropna().empty:
+        st.warning("⚠️ No valid 'Sub Category' data found.")
         return
 
+    subcats = sorted(df['Sub Category'].dropna().unique())
     selected_subcat = st.selectbox("Choose a Sub-Category", subcats)
-    sub_df = sales_df[sales_df['Sub Category'] == selected_subcat]
+    sub_df = df[df['Sub Category'] == selected_subcat]
 
     if sub_df.empty:
         st.warning("No data found for this sub-category.")
@@ -250,11 +260,16 @@ def render_subcategory_trends(txns_df):
     # Monthly trend
     trend_df = sub_df.groupby('Month').agg({
         'Invoice Total': 'sum',
-        'Production Cost': 'sum',
+        'Production Cost': 'sum' if 'Production Cost' in sub_df.columns else 'size',
         'Quantity': 'sum'
-    }).reset_index()
-    trend_df['Gross Profit'] = trend_df['Invoice Total'] - trend_df['Production Cost']
-    trend_df['Profit Margin (%)'] = (trend_df['Gross Profit'] / trend_df['Invoice Total']) * 100
+    }).rename(columns={'Production Cost': 'Production Cost'}).reset_index()
+
+    if 'Production Cost' in trend_df.columns:
+        trend_df['Gross Profit'] = trend_df['Invoice Total'] - trend_df['Production Cost']
+        trend_df['Profit Margin (%)'] = (trend_df['Gross Profit'] / trend_df['Invoice Total']) * 100
+    else:
+        trend_df['Gross Profit'] = np.nan
+        trend_df['Profit Margin (%)'] = np.nan
 
     st.plotly_chart(
         go.Figure([
@@ -308,18 +323,21 @@ def render_subcategory_trends(txns_df):
         else:
             insights.append(f"🔄 Sales for **{selected_subcat}** remained steady. Consider small nudges like banner placements or bundling.")
 
-        if latest['Gross Profit'] < 0.8 * avg_profit:
+        if not np.isnan(latest['Gross Profit']) and latest['Gross Profit'] < 0.8 * avg_profit:
             insights.append(f"⚠️ Profit this month is **below average**. Review COGS or pricing strategy.")
 
-        if latest['Profit Margin (%)'] < 20:
-            insights.append(f"💸 Low profit margin (**{latest['Profit Margin (%)']:.1f}%**). You may be **underpricing** or discounting too heavily.")
-        elif latest['Profit Margin (%)'] > 50:
-            insights.append(f"🚀 High margin (**{latest['Profit Margin (%)']:.1f}%**). Consider **scaling** via promotions or placement.")
+        if not np.isnan(latest['Profit Margin (%)']):
+            if latest['Profit Margin (%)'] < 20:
+                insights.append(f"💸 Low profit margin (**{latest['Profit Margin (%)']:.1f}%**). You may be **underpricing** or discounting too heavily.")
+            elif latest['Profit Margin (%)'] > 50:
+                insights.append(f"🚀 High margin (**{latest['Profit Margin (%)']:.1f}%**). Consider **scaling** via promotions or placement.")
 
         insights.append(f"📊 **Best day** for sales: **{best_day}**. Try pushing promotions here.")
         insights.append(f"😴 **Lowest sales** on: **{worst_day}**. Could test targeted nudges or restocking.")
 
         st.success("\n\n".join(insights))
     except Exception as e:
+        st.warning(f"⚠️ Could not generate insights: {e}")
+
         st.warning(f"⚠️ Could not generate insights: {e}")
 
