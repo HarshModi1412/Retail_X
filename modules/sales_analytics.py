@@ -341,3 +341,76 @@ def render_subcategory_trends(txns_df):
 
         st.warning(f"⚠️ Could not generate insights: {e}")
 
+def generate_dynamic_insights(insights):
+    st.subheader("📘 Smart Storytelling Insights")
+
+    # === Monthly Sales Trend ===
+    monthly = insights['monthly_summary']
+    if len(monthly) >= 2:
+        change = monthly['Sales'].pct_change().iloc[-1] * 100
+        latest = monthly['Month'].iloc[-1]
+        prev = monthly['Month'].iloc[-2]
+
+        if change > 10:
+            st.success(f"📈 Sales increased by **{change:.1f}%** in **{latest}** compared to **{prev}**. Expand fast-moving SKUs and consider replicating successful campaigns.")
+        elif change < -10:
+            st.error(f"📉 Sales dropped by **{abs(change):.1f}%** in **{latest}**. Investigate sub-category declines, returns, or discount strategy.")
+        else:
+            st.info(f"📊 Sales remained relatively stable in **{latest}**. Consider A/B testing bundles or minor discount tweaks.")
+
+    else:
+        st.warning("Not enough monthly data to analyze sales trend.")
+
+    # === Sub-Category Profitability ===
+    subcat_df = insights['subcat_sales']
+    if not subcat_df.empty:
+        if 'Gross Profit' in subcat_df.columns:
+            top = subcat_df.iloc[0]
+            bottom = subcat_df.iloc[-1]
+
+            st.markdown(f"""
+🏷️ **Sub-Category Performance**
+- 🥇 Top performer: **{top['Sub Category']}** — ₹{top['Gross Profit']:,.0f} profit  
+- 🛑 Lowest performer: **{bottom['Sub Category']}** — ₹{bottom['Gross Profit']:,.0f} profit  
+""")
+        else:
+            top = subcat_df.sort_values(by='Invoice Total', ascending=False).iloc[0]
+            st.markdown(f"""
+🏷️ **Sub-Category Leader**
+- 🛒 Highest sales from **{top['Sub Category']}** — ₹{top['Invoice Total']:,.0f}
+""")
+
+    # === Discount Effectiveness ===
+    discount_df = insights['discount_effectiveness']
+    if not discount_df.empty and 'Discount' in discount_df.columns:
+        best = discount_df.loc[discount_df['Invoice Total'].idxmax()]
+        worst = discount_df.loc[discount_df['Invoice Total'].idxmin()]
+        st.markdown(f"""
+🎯 **Discount Strategy Insights**
+- 🎉 Best performing discount: **{best['Discount']}%** → ₹{best['Invoice Total']:,.0f} in sales  
+- 💤 Least effective discount: **{worst['Discount']}%** → ₹{worst['Invoice Total']:,.0f}  
+Consider optimizing the discount ladder to focus on sweet spots that convert.
+""")
+
+    # === Day of Week ===
+    dow_df = insights['dow_sales']
+    if not dow_df.empty:
+        best_day = dow_df.loc[dow_df['Invoice Total'].idxmax(), 'DayOfWeek']
+        worst_day = dow_df.loc[dow_df['Invoice Total'].idxmin(), 'DayOfWeek']
+        st.markdown(f"""
+📅 **Weekly Timing Insight**
+- 🔥 Best sales day: **{best_day}** — maximize ads, email blasts or SMS offers here.  
+- 😴 Slowest day: **{worst_day}** — test exclusive nudges, loyalty rewards, or restocking.
+""")
+
+    # === Gross Profit Margin ===
+    if insights['profit_margin'] is not None:
+        margin = insights['profit_margin']
+        if margin < 20:
+            st.error(f"💸 Low gross profit margin: **{margin:.1f}%**. You may be underpricing or running too many discounts.")
+        elif margin > 50:
+            st.success(f"💰 High margin (**{margin:.1f}%**) — opportunity to scale up with more volume or promotions.")
+
+    st.markdown("---")
+
+
