@@ -66,8 +66,10 @@ tabs = st.tabs([
     "🏷️ Discount Effectiveness",  
     "🧬 Customer Profiler", 
     "🧭 Customer Journey Mapping",   
-    "🔍 Sub-Category Drilldown Analysis"     
-])
+    "🔍 Sub-Category Drilldown Analysis",
+    "💡 Dynamic Insights"
+])     
+
 
 # TAB 1: Instructions
 with tabs[0]:
@@ -246,7 +248,14 @@ with tabs[7]:
             if st.button("▶️ Start Sub-Category Analysis"):
                 st.session_state.start_subcat_analysis = True
                 st.rerun()
-
+# TAB 9: Dynamic Insights
+with tabs[8]:
+    st.subheader("💡 Smart Narrative & Dynamic Insights")
+    if txns_df is None:
+        st.warning("📂 Please upload the Transactions file first.")
+    else:
+        insights = generate_sales_insights(txns_df)
+        generate_dynamic_insights(insights)
 
 # Sidebar Reset
 if st.sidebar.button("🔄 Reset App"):
