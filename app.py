@@ -70,7 +70,7 @@ tabs = st.tabs([
     "🧭 Customer Journey Mapping",   
     "🔍 Sub-Category Drilldown Analysis",
     "💡 Dynamic Insights",
-    "🤖 Business Analyst AI"
+    "🤖 Business Analyst AI (BETA)"
 ])     
 
 
