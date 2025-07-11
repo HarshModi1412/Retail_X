@@ -22,5 +22,6 @@ __all__ = [
     'detect_file_roles',
     'classify_and_extract_data',
     'find_column_across_files',
-    'render_subcategory_trends'
+    'render_subcategory_trends',
+    'generate_sales_insights'
 ]
