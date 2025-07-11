@@ -4,14 +4,26 @@ from datetime import date
 from itertools import combinations
 from collections import Counter
 
+import pandas as pd
+
 def calculate_rfm(txns_df: pd.DataFrame, today_date=None):
     if today_date is None:
         today_date = pd.to_datetime("today")
 
     df = txns_df.copy()
+
+    # Clean and validate required columns
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
     df = df.dropna(subset=['Date'])
+
     df['Customer ID'] = df['Customer ID'].astype(str)
+
+    # Fallback if 'Invoice Total' is missing
+    if 'Invoice Total' not in df.columns:
+        if 'Unit Price' in df.columns and 'Quantity' in df.columns:
+            df['Invoice Total'] = df['Unit Price'] * df['Quantity']
+        else:
+            raise ValueError("Required column 'Invoice Total' not found and cannot be computed from Unit Price & Quantity.")
 
     snapshot = today_date
     rfm = df.groupby('Customer ID').agg({
@@ -28,16 +40,23 @@ def calculate_rfm(txns_df: pd.DataFrame, today_date=None):
     rfm['Frequency'] = pd.to_numeric(rfm['Frequency'], errors='coerce')
     rfm['Monetary'] = pd.to_numeric(rfm['Monetary'], errors='coerce')
 
+    # --- Safe Binning Function ---
     def safe_qcut(series, labels, ascending=True):
-        if series.nunique() < len(labels):
-            ranked = series.rank(method='first', ascending=ascending)
-            try:
-                return pd.qcut(ranked, q=len(labels), labels=labels)
-            except:
-                mid_label = labels[len(labels)//2]
-                return pd.Series([mid_label]*len(series), index=series.index)
-        return pd.qcut(series, q=len(labels), labels=labels)
+        series = series.copy()
+        valid_values = series.dropna().unique()
 
+        if len(valid_values) < len(labels):
+            mid_label = labels[len(labels)//2]
+            return pd.Series([mid_label]*len(series), index=series.index)
+
+        try:
+            ranked = series.rank(method='first', ascending=ascending)
+            return pd.qcut(ranked, q=len(labels), labels=labels)
+        except Exception:
+            mid_label = labels[len(labels)//2]
+            return pd.Series([mid_label]*len(series), index=series.index)
+
+    # Scoring logic
     r_labels = [5, 4, 3, 2, 1]
     f_labels = [1, 2, 3, 4, 5]
     m_labels = [1, 2, 3, 4, 5]
@@ -46,9 +65,15 @@ def calculate_rfm(txns_df: pd.DataFrame, today_date=None):
     rfm['F_Score'] = safe_qcut(rfm['Frequency'], f_labels).astype(int)
     rfm['M_Score'] = safe_qcut(rfm['Monetary'], m_labels).astype(int)
 
-    rfm['RFM_Score'] = rfm['R_Score'].astype(str) + rfm['F_Score'].astype(str) + rfm['M_Score'].astype(str)
+    rfm['RFM_Score'] = (
+        rfm['R_Score'].astype(str) +
+        rfm['F_Score'].astype(str) +
+        rfm['M_Score'].astype(str)
+    )
 
     return rfm
+
+
 
 
 def assign_segment_tags(rfm_df: pd.DataFrame) -> pd.DataFrame:
