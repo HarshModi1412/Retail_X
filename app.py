@@ -11,7 +11,7 @@ from modules.personalization import compute_customer_preferences
 from modules.sales_analytics import render_sales_analytics,render_subcategory_trends,generate_sales_insights
 from modules.mapper import classify_and_extract_data
 from modules.smart_insights import generate_dynamic_insights
-
+import BA
 
 # Page config
 st.set_page_config(page_title="Retail Analytics Dashboard", layout="wide")
@@ -69,7 +69,8 @@ tabs = st.tabs([
     "🧬 Customer Profiler", 
     "🧭 Customer Journey Mapping",   
     "🔍 Sub-Category Drilldown Analysis",
-    "💡 Dynamic Insights"
+    "💡 Dynamic Insights",
+    "🤖 Business Analyst AI"
 ])     
 
 
@@ -258,7 +259,9 @@ with tabs[8]:
     else:
         insights = generate_sales_insights(txns_df)
         generate_dynamic_insights(insights)
-
+# TAB 10: Business Analyst AI
+with tabs[9]:
+    BA.run_business_analyst_tab()
 # Sidebar Reset
 if st.sidebar.button("🔄 Reset App"):
     for key in list(st.session_state.keys()):
