@@ -47,4 +47,4 @@ def generate_dynamic_insights(insights: dict):
             st.success(msg)
 
     except Exception as e:
-        st.error(f\"Error generating insights: {e}\")
+        st.error(f"Error generating insights: {e}")
