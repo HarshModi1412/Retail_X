@@ -8,8 +8,10 @@ from modules.profiler import generate_customer_profile
 from modules.customer_journey import map_customer_journey_and_affinity, generate_behavioral_recommendation_with_impact
 from modules.discount import generate_discount_insights, assign_offer_codes
 from modules.personalization import compute_customer_preferences
-from modules.sales_analytics import render_sales_analytics,render_subcategory_trends,generate_sales_insights
+from modules.sales_analytics import render_sales_analytics,render_subcategory_trends
 from modules.mapper import classify_and_extract_data
+from modules.smart_insights import generate_dynamic_insights
+
 
 # Page config
 st.set_page_config(page_title="Retail Analytics Dashboard", layout="wide")
