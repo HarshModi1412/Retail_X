@@ -244,7 +244,7 @@ def run_business_analyst_tab():
 
     # --- Streamlit UI ---
     st.set_page_config(page_title="\U0001f9e0 Insight-by-Insight Analyst", layout="wide")
-    st.title("\U0001f916 AI-Powered Insight Visualizer")
+    st.title("\U0001f916 AI-Powered Insights")
 
     uploaded_file = st.file_uploader("\U0001f4c1 Upload CSV or Excel", type=["csv", "xlsx"])
 
