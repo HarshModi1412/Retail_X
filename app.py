@@ -16,6 +16,18 @@ import BA
 # Page config
 st.set_page_config(page_title="Retail Analytics Dashboard", layout="wide")
 
+st.set_page_config(
+    page_title="RetailX Dashboard",  # Change to your app's name
+    page_icon="📊",
+    layout="wide",
+    menu_items={
+        "Get Help": None,
+        "Report a bug": None,
+        "About": None
+        # "View Source" is also removed by omitting it entirely
+    }
+)
+
 # Branding + styling
 st.markdown("""
 <style>
