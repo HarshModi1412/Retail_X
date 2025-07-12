@@ -14,17 +14,8 @@ from modules.smart_insights import generate_dynamic_insights
 import BA
 
 
-# ✅ Correct and safe set_page_config
 st.set_page_config(
-    page_title="RetailX Dashboard",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="auto",
-    menu_items={
-        "Get Help": None,
-        "Report a bug": None,
-        "About": None
-    }
+    page_title="RetailX Dashboard"
 )
 
 
