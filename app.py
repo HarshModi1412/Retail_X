@@ -13,20 +13,19 @@ from modules.mapper import classify_and_extract_data
 from modules.smart_insights import generate_dynamic_insights
 import BA
 
-# Page config
-st.set_page_config(page_title="Retail Analytics Dashboard", layout="wide")
 
+# ✅ Only one page config — with menu_items included
 st.set_page_config(
-    page_title="RetailX Dashboard",  # Change to your app's name
+    page_title="RetailX Dashboard",
     page_icon="📊",
     layout="wide",
     menu_items={
         "Get Help": None,
         "Report a bug": None,
         "About": None
-        # "View Source" is also removed by omitting it entirely
     }
 )
+
 
 # Branding + styling
 st.markdown("""
