@@ -277,9 +277,9 @@ with tabs[8]:
 with tabs[9]:
     BA.run_business_analyst_tab()
 
-# TAB 11: Business Analyst AI
+# TAB 11: Business KPI Analyst AI
 with tabs[10]:
-    KPI_analyst.run_business_analyst_tab()
+    KPI_analyst.run_kpi_analyst()
 # Sidebar Reset
 if st.sidebar.button("🔄 Reset App"):
     for key in list(st.session_state.keys()):
