@@ -12,6 +12,7 @@ from modules.sales_analytics import render_sales_analytics,render_subcategory_tr
 from modules.mapper import classify_and_extract_data
 from modules.smart_insights import generate_dynamic_insights
 import BA
+import KPI_analyst
 
 
 # ✅ Correct and safe set_page_config
@@ -82,7 +83,8 @@ tabs = st.tabs([
     "🧭 Customer Journey Mapping",   
     "🔍 Sub-Category Drilldown Analysis",
     "💡 Dynamic Insights",
-    "🤖 Business Analyst AI (BETA)"
+    "🤖 Business Analyst AI (BETA)",
+    "KPI based Analyst"
 ])     
 
 
