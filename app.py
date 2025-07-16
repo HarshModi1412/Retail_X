@@ -13,6 +13,7 @@ from modules.mapper import classify_and_extract_data
 from modules.smart_insights import generate_dynamic_insights
 import BA
 import KPI_analyst
+import chatbot2
 
 
 # ✅ Correct and safe set_page_config
@@ -84,7 +85,8 @@ tabs = st.tabs([
     "🔍 Sub-Category Drilldown Analysis",
     "💡 Dynamic Insights",
     "🤖 Business Analyst AI (BETA)",
-    "KPI based Analyst"
+    "KPI based Analyst",
+    "Chatbot"
 ])     
 
 
@@ -280,6 +282,11 @@ with tabs[9]:
 # TAB 11: Business KPI Analyst AI
 with tabs[10]:
     KPI_analyst.run_kpi_analyst()
+
+# TAB 12: Business Chatbot AI
+with tabs[11]:
+    chatbot2.run_chat()
+
 # Sidebar Reset
 if st.sidebar.button("🔄 Reset App"):
     for key in list(st.session_state.keys()):
