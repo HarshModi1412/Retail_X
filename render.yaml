@@ -8,4 +8,4 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.13
-    autoDeploy: false  # disables auto-deploy from GitHub
+    autoDeploy: false
