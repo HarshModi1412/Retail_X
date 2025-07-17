@@ -15,6 +15,20 @@ import BA
 import KPI_analyst
 import chatbot2
 
+import streamlit as st
+
+hide_ui = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    a[href*="github.com"] {visibility: hidden;}
+    .css-1lsmgbg.e1fqkh3o5 {display: none;}
+    </style>
+"""
+st.markdown(hide_ui, unsafe_allow_html=True)
+
+
 
 # ✅ Correct and safe set_page_config
 st.set_page_config(
