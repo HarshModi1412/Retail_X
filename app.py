@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from collections import defaultdict
 
 # Module Imports
 from modules.rfm import calculate_rfm, get_campaign_targets, generate_personal_offer
@@ -8,16 +7,15 @@ from modules.profiler import generate_customer_profile
 from modules.customer_journey import map_customer_journey_and_affinity, generate_behavioral_recommendation_with_impact
 from modules.discount import generate_discount_insights, assign_offer_codes
 from modules.personalization import compute_customer_preferences
-from modules.sales_analytics import render_sales_analytics,render_subcategory_trends,generate_sales_insights
+from modules.sales_analytics import render_sales_analytics, render_subcategory_trends, generate_sales_insights
 from modules.mapper import classify_and_extract_data
 from modules.smart_insights import generate_dynamic_insights
 import BA
 import KPI_analyst
 import chatbot2
 
-import streamlit as st
-
-hide_ui = """
+# --- Hide Streamlit UI Elements ---
+st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -25,26 +23,17 @@ hide_ui = """
     a[href*="github.com"] {visibility: hidden;}
     .css-1lsmgbg.e1fqkh3o5 {display: none;}
     </style>
-"""
-st.markdown(hide_ui, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-
-
-# ✅ Correct and safe set_page_config
+# --- Page Config ---
 st.set_page_config(
     page_title="RetailX Dashboard",
     page_icon="📊",
     layout="wide",
-    menu_items={
-        "Get Help": None,
-        "Report a bug": None,
-        "About": None
-    }
+    menu_items={"Get Help": None, "Report a bug": None, "About": None}
 )
 
-
-
-# Branding + styling
+# --- Branding ---
 st.markdown("""
 <style>
     .block-container {
@@ -58,7 +47,6 @@ st.markdown("""
 
 # --- Sidebar Upload ---
 st.sidebar.title("📁 Upload Your CSV Files")
-
 uploaded_files = st.sidebar.file_uploader(
     "Upload 1–4 CSV files (Transactions, Customers, Products, Promotions)",
     type=["csv", "xlsx"],
@@ -78,19 +66,13 @@ if uploaded_files:
 if not uploaded_files and not st.session_state["files_mapped"]:
     st.info("👈 Please upload your CSV files from the sidebar to get started.")
 elif uploaded_files and not st.session_state["files_mapped"]:
-    st.warning("📤 Files uploaded. Go to the **🗂️ File Mapping** tab to proceed.")
+    st.warning("📄 Files uploaded. Go to the **🗂️ File Mapping** tab to proceed.")
 elif st.session_state["files_mapped"]:
     st.success("✅ Files loaded and mapped. You're ready to explore insights!")
 
-# --- Load File Data from Session ---
-txns_df = st.session_state.get("txns_df", None)
-cust_df = st.session_state.get("cust_df", None)
-prod_df = st.session_state.get("prod_df", None)
-promo_df = st.session_state.get("promo_df", None)
-
 # --- Build AI Context Early ---
 ai_context = None
-if st.session_state.get("files_mapped", False):
+if st.session_state.get("files_mapped"):
     ai_txns_df = st.session_state.get("ai_txns_df")
     ai_cust_df = st.session_state.get("ai_cust_df")
     ai_prod_df = st.session_state.get("ai_prod_df")
@@ -104,29 +86,26 @@ if st.session_state.get("files_mapped", False):
             "promo_df": ai_promo_df
         }
 
-
-
-
+# --- Tabs ---
 tabs = st.tabs([
     "📘 Instructions", 
     "🗂️ File Mapping",
     "📊 Sales Analytics", 
     "🔍 Sub-Category Drilldown Analysis",                               
     "📊 RFM Segmentation", 
-    "🤖 Business Analyst AI (BETA)",
+    "🧠 Business Analyst AI (BETA)",
     "🤖 Chatbot"
-])     
-
+])
 
 # TAB 1: Instructions
 with tabs[0]:
     st.subheader("📘 Instructions & User Guide")
     st.markdown("""
-    Welcome to the **Retail Analytics Dashboard**. Please follow the steps below:
-    - 📁 Upload your data files from the **sidebar**
-    - Navigate through tabs to run analysis
-    - Use buttons to trigger specific modules
-    - Download results wherever applicable
+        Welcome to the **Retail Analytics Dashboard**. Please follow the steps below:
+        - 📁 Upload your data files from the **sidebar**
+        - Navigate through tabs to run analysis
+        - Use buttons to trigger specific modules
+        - Download results wherever applicable
     """)
 
 # TAB 2: File Mapping
@@ -138,34 +117,48 @@ with tabs[1]:
 
         if not st.session_state.get("files_mapped"):
             mapped_data, new_ai_context = classify_and_extract_data(uploaded_files)
-            if isinstance(new_ai_context, dict):
-                ai_context.update(new_ai_context)
 
-
-
-            if mapped_data:
-                # Only now save to session
+            if mapped_data and new_ai_context:
                 st.session_state['txns_df'] = mapped_data.get("Transactions")
                 st.session_state['cust_df'] = mapped_data.get("Customers")
                 st.session_state['prod_df'] = mapped_data.get("Products")
                 st.session_state['promo_df'] = mapped_data.get("Promotions")
-                st.session_state['ai_txns_df'] = ai_data.get("Transactions")
-                st.session_state['ai_cust_df'] = ai_data.get("Customers")
-                st.session_state['ai_prod_df'] = ai_data.get("Products")
-                st.session_state['ai_promo_df'] = ai_data.get("Promotions")
-
+                st.session_state['ai_txns_df'] = new_ai_context.get("txns_df")
+                st.session_state['ai_cust_df'] = new_ai_context.get("cust_df")
+                st.session_state['ai_prod_df'] = new_ai_context.get("prod_df")
+                st.session_state['ai_promo_df'] = new_ai_context.get("promo_df")
                 st.session_state["files_mapped"] = True
                 st.rerun()
+
         else:
             # Preview mapped data
             with st.expander("📄 Transactions Sample"):
-                st.dataframe(st.session_state["txns_df"].head(10) if st.session_state["txns_df"] is not None else "⚠️ Transactions data not mapped.")
+                txns_df = st.session_state.get("txns_df")
+                if txns_df is not None:
+                    st.dataframe(txns_df.head(10))
+                else:
+                    st.warning("⚠️ Transactions data not mapped.")
+
             with st.expander("📄 Customers Sample"):
-                st.dataframe(st.session_state["cust_df"].head(10) if st.session_state["cust_df"] is not None else "⚠️ Customers data not mapped.")
+                cust_df = st.session_state.get("cust_df")
+                if cust_df is not None:
+                    st.dataframe(cust_df.head(10))
+                else:
+                    st.warning("⚠️ Customers data not mapped.")
+
             with st.expander("📄 Products Sample"):
-                st.dataframe(st.session_state["prod_df"].head(10) if st.session_state["prod_df"] is not None else "⚠️ Products data not mapped.")
+                prod_df = st.session_state.get("prod_df")
+                if prod_df is not None:
+                    st.dataframe(prod_df.head(10))
+                else:
+                    st.warning("⚠️ Products data not mapped.")
+
             with st.expander("📄 Promotions Sample"):
-                st.dataframe(st.session_state["promo_df"].head(10) if st.session_state["promo_df"] is not None else "⚠️ Promotions data not mapped.")
+                promo_df = st.session_state.get("promo_df")
+                if promo_df is not None:
+                    st.dataframe(promo_df.head(10))
+                else:
+                    st.warning("⚠️ Promotions data not mapped.")
 
     else:
         st.info("👈 Please upload your CSV files from the sidebar to start mapping.")
@@ -173,21 +166,12 @@ with tabs[1]:
 # TAB 3: Sales Analytics
 with tabs[2]:
     st.subheader("📊 Sales Analytics Overview")
-    
+    txns_df = st.session_state.get("txns_df")
     if txns_df is None:
         st.warning("📂 Please upload the Transactions CSV file to begin.")
     else:
-        if "start_sales_analysis" not in st.session_state:
-            st.session_state.start_sales_analysis = False
-
-        if not st.session_state.start_sales_analysis:
-            if st.button("▶️ Start Sales Analytics"):
-                st.session_state.start_sales_analysis = True
-                st.rerun()
-        else:
+        if st.button("▶️ Start Sales Analytics"):
             render_sales_analytics(txns_df)
-
-            # Add dynamic insights section (from TAB 9)
             st.markdown("---")
             st.subheader("💡 Smart Narrative & Dynamic Insights")
             insights = generate_sales_insights(txns_df)
@@ -196,87 +180,50 @@ with tabs[2]:
 # TAB 4: Sub-Category Drilldown Analysis
 with tabs[3]:
     st.subheader("🔍 Sub-Category Drilldown Analysis")
-
-    if txns_df is None:
-        st.warning("📂 Please upload your Transactions file to proceed.")
+    txns_df = st.session_state.get("txns_df")
+    if txns_df is not None:
+        render_subcategory_trends(txns_df)
     else:
-        if "start_subcat_analysis" not in st.session_state:
-            st.session_state.start_subcat_analysis = False
-
-        if st.session_state.start_subcat_analysis:
-            render_subcategory_trends(txns_df)
-        else:
-            st.info("Click the button below to begin analyzing sub-category trends.")
-            if st.button("▶️ Start Sub-Category Analysis"):
-                st.session_state.start_subcat_analysis = True
-                st.rerun()
+        st.warning("📂 Please upload your Transactions file to proceed.")
 
 # TAB 5: RFM Segmentation
 with tabs[4]:
     st.subheader("🚦 RFM Segmentation Analysis")
-    if txns_df is None:
-        st.warning("⚠️ Please upload the Transactions CSV file to proceed.")
-    else:
-        if "run_rfm" not in st.session_state:
-            st.session_state.run_rfm = False
-
-        if not st.session_state.run_rfm:
-            if st.button("▶️ Run RFM Analysis"):
-                st.session_state.run_rfm = True
-                st.rerun()
-
-        if st.session_state.run_rfm:
-            with st.spinner("Running RFM segmentation..."):
-                rfm_df = calculate_rfm(txns_df)
-                st.session_state['rfm_df'] = rfm_df
-            st.success("✅ RFM Analysis Completed!")
-            st.dataframe(rfm_df.head(10), use_container_width=True)
+    txns_df = st.session_state.get("txns_df")
+    cust_df = st.session_state.get("cust_df")
+    if txns_df is not None:
+        if st.button("▶️ Run RFM Analysis"):
+            rfm_df = calculate_rfm(txns_df)
+            st.dataframe(rfm_df.head(10))
             st.download_button("📥 Download RFM Output", rfm_df.to_csv(index=False), "rfm_output.csv")
-
             if st.button("🚀 Get Campaign Target List"):
                 campaign_df = get_campaign_targets(rfm_df)
-                st.session_state['campaign_df'] = campaign_df
-                st.success(f"🎯 Found {len(campaign_df)} campaign-ready customers.")
-                st.dataframe(campaign_df.head(10), use_container_width=True)
-                st.download_button("📥 Download Campaign Target List", campaign_df.to_csv(index=False), "campaign_targets.csv")
-
+                st.dataframe(campaign_df.head(10))
             if st.button("💬 Send Personalized Message"):
-                try:
-                    campaign_df = st.session_state.get('campaign_df')
-                    if campaign_df is None or campaign_df.empty:
-                        st.warning("⚠️ No campaign targets found. Please run RFM and generate the campaign list first.")
-                    else:
-                        message = generate_personal_offer(txns_df, cust_df)
-                        if "No eligible customers" in message:
-                            st.warning(message)
-                        else:
-                            st.success("📨 Message Generated:")
-                            st.markdown(message)
-                except Exception as e:
-                    st.error(f"⚠️ Error generating message: {e}")
+                msg = generate_personal_offer(txns_df, cust_df)
+                st.markdown(msg)
+    else:
+        st.warning("⚠️ Please upload the Transactions CSV file to proceed.")
 
-# Combined TAB 6: Business Analyst + KPI Analyst AI
+# TAB 6: Business Analyst + KPI Analyst AI
 with tabs[5]:
     st.subheader("🧠 Business Analyst AI + KPI Analyst")
-
-    if ai_context is None or ai_context["txns_df"] is None:
-        st.warning("📂 Please upload and map your files to access AI features.")
-    else:
+    if ai_context is not None and ai_context.get("txns_df") is not None:
         BA.run_business_analyst_tab(ai_context)
         st.markdown("---")
         KPI_analyst.run_kpi_analyst(ai_context)
+    else:
+        st.warning("📂 Please upload and map your files to access AI features.")
 
 # TAB 7: Business Chatbot AI
 with tabs[6]:
     st.subheader("🤖 Business Chatbot AI")
-
-    if ai_context is None or ai_context["txns_df"] is None:
-        st.warning("📂 Please upload and map your files to use the AI chatbot.")
-    else:
+    if ai_context is not None and ai_context.get("txns_df") is not None:
         chatbot2.run_chat(ai_context)
+    else:
+        st.warning("📂 Please upload and map your files to use the AI chatbot.")
 
-
-# Sidebar Reset
+# --- Sidebar Reset Button ---
 if st.sidebar.button("🔄 Reset App"):
     for key in list(st.session_state.keys()):
         del st.session_state[key]
