@@ -166,7 +166,14 @@ def classify_and_extract_data(uploaded_files):
             fields = list(REQUIRED_FIELDS[role].keys())
             df = build_dataframe_from_mapping(mapping, fields)
             final_data[role] = df
-        return final_data
+        ai_data = {
+            "Transactions": final_data.get("Transactions").copy() if "Transactions" in final_data else None,
+            "Customers": final_data.get("Customers").copy() if "Customers" in final_data else None,
+            "Products": final_data.get("Products").copy() if "Products" in final_data else None,
+            "Promotions": final_data.get("Promotions").copy() if "Promotions" in final_data else None,
+        }
+        return final_data, ai_data
+
 
     return None
 
