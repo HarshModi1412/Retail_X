@@ -254,7 +254,13 @@ with tabs[5]:
 
 # TAB 7: Business Chatbot AI
 with tabs[6]:
-    chatbot2.run_chat()
+    st.subheader("🤖 Business Chatbot AI")
+
+    if ai_context is None or ai_context["txns_df"] is None:
+        st.warning("📂 Please upload and map your files to use the AI chatbot.")
+    else:
+        chatbot2.run_chat(ai_context)
+
 
 # Sidebar Reset
 if st.sidebar.button("🔄 Reset App"):
