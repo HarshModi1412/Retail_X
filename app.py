@@ -244,14 +244,13 @@ with tabs[4]:
 # Combined TAB 6: Business Analyst + KPI Analyst AI
 with tabs[5]:
     st.subheader("🧠 Business Analyst AI + KPI Analyst")
-    
-    # Run Business Analyst functionality
-    BA.run_business_analyst_tab()
-    
-    st.markdown("---")  # Visual separation
-    
-    # Run KPI Analyst functionality
-    KPI_analyst.run_kpi_analyst()
+
+    if ai_context is None or ai_context["txns_df"] is None:
+        st.warning("📂 Please upload and map your files to access AI features.")
+    else:
+        BA.run_business_analyst_tab(ai_context)
+        st.markdown("---")
+        KPI_analyst.run_kpi_analyst(ai_context)
 
 # TAB 7: Business Chatbot AI
 with tabs[6]:
