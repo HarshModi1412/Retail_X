@@ -83,21 +83,28 @@ elif st.session_state["files_mapped"]:
     st.success("✅ Files loaded and mapped. You're ready to explore insights!")
 
 # --- Load File Data from Session ---
-txns_df = st.session_state.get("txns_df")
-cust_df = st.session_state.get("cust_df")
-prod_df = st.session_state.get("prod_df")
-promo_df = st.session_state.get("promo_df")
+txns_df = st.session_state.get("txns_df", None)
+cust_df = st.session_state.get("cust_df", None)
+prod_df = st.session_state.get("prod_df", None)
+promo_df = st.session_state.get("promo_df", None)
 
 # --- Build AI Context Early ---
-ai_context = {}
+ai_context = None
+if st.session_state.get("files_mapped", False):
+    ai_txns_df = st.session_state.get("ai_txns_df")
+    ai_cust_df = st.session_state.get("ai_cust_df")
+    ai_prod_df = st.session_state.get("ai_prod_df")
+    ai_promo_df = st.session_state.get("ai_promo_df")
 
-if st.session_state.get("files_mapped"):
-    ai_context.update({
-        "txns_df": st.session_state.get("ai_txns_df"),
-        "cust_df": st.session_state.get("ai_cust_df"),
-        "prod_df": st.session_state.get("ai_prod_df"),
-        "promo_df": st.session_state.get("ai_promo_df")
-    })
+    if all([ai_txns_df is not None, ai_cust_df is not None, ai_prod_df is not None, ai_promo_df is not None]):
+        ai_context = {
+            "txns_df": ai_txns_df,
+            "cust_df": ai_cust_df,
+            "prod_df": ai_prod_df,
+            "promo_df": ai_promo_df
+        }
+
+
 
 
 tabs = st.tabs([
