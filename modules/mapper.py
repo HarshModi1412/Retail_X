@@ -3,13 +3,6 @@ import pandas as pd
 from collections import defaultdict
 import chardet
 
-# --- Read CSV with encoding detection ---
-def read_csv_with_encoding(file):
-    raw_bytes = file.read()
-    encoding = chardet.detect(raw_bytes)["encoding"] or "utf-8"
-    file.seek(0)
-    return pd.read_csv(file, encoding=encoding, encoding_errors="replace")
-
 # --- Canonical Field Mapping ---
 REQUIRED_FIELDS = {
     "Transactions": {
@@ -49,8 +42,15 @@ REQUIRED_FIELDS = {
 }
 
 # --- Normalization ---
-def normalize(col: str) -> str:
+def normalize(col):
     return col.strip().lower().replace(" ", "_")
+
+# --- Read CSV with encoding detection ---
+def read_csv_with_encoding(file):
+    raw_bytes = file.read()
+    encoding = chardet.detect(raw_bytes)["encoding"] or "utf-8"
+    file.seek(0)
+    return pd.read_csv(file, encoding=encoding, encoding_errors="replace")
 
 # --- Build inventory of columns across files ---
 def build_column_inventory(files):
@@ -116,15 +116,14 @@ def build_dataframe_from_mapping(mapping, required_fields):
 
     return df
 
+# --- Main function to classify, map, and return data ---
 def classify_and_extract_data(uploaded_files):
-    # Don't re-map if already mapped
     if st.session_state.get("files_mapped"):
         return None, st.session_state.get("ai_context")
 
     inventory, file_dfs = build_column_inventory(uploaded_files)
     final_data = {}
     all_mappings = {}
-    confirmed = False
 
     for role in REQUIRED_FIELDS:
         st.markdown(f"### 📄 Mapping for `{role}`")
@@ -145,7 +144,6 @@ def classify_and_extract_data(uploaded_files):
 
         all_mappings[role] = {**auto_mapping, **manual_mapping}
 
-    # Display confirm button and only return mapped data when clicked
     if st.button("✅ Confirm and Start Analytics"):
         for role, mapping in all_mappings.items():
             fields = list(REQUIRED_FIELDS[role].keys())
@@ -159,11 +157,16 @@ def classify_and_extract_data(uploaded_files):
             "promotions_df": final_data.get("Promotions"),
         }
 
-        # ✅ Save to session
-        st.session_state["ai_context"] = ai_data
-        st.session_state["files_mapped"] = True
+        st.session_state.update({
+            "txns_df": ai_data["txns_df"],
+            "cust_df": ai_data["customers_df"],
+            "prod_df": ai_data["products_df"],
+            "promo_df": ai_data["promotions_df"],
+            "ai_context": ai_data,
+            "files_mapped": True
+        })
+
         st.success("✅ Mapping confirmed and data loaded!")
         st.rerun()
 
     return None, None
-
