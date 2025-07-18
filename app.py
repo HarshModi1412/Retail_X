@@ -89,14 +89,15 @@ prod_df = st.session_state.get("prod_df")
 promo_df = st.session_state.get("promo_df")
 
 # --- Build AI Context Early ---
-ai_context = None
-if st.session_state.get("files_mapped", False):
-    ai_context = {
+ai_context = {}
+
+if st.session_state.get("files_mapped"):
+    ai_context.update({
         "txns_df": st.session_state.get("ai_txns_df"),
         "cust_df": st.session_state.get("ai_cust_df"),
         "prod_df": st.session_state.get("ai_prod_df"),
         "promo_df": st.session_state.get("ai_promo_df")
-    }
+    })
 
 
 tabs = st.tabs([
