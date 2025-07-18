@@ -87,7 +87,15 @@ txns_df = st.session_state.get("txns_df")
 cust_df = st.session_state.get("cust_df")
 prod_df = st.session_state.get("prod_df")
 promo_df = st.session_state.get("promo_df")
-
+# AI-specific copies (read only once)
+ai_context = None
+if st.session_state["files_mapped"]:
+    ai_context = {
+        "txns_df": st.session_state.get("ai_txns_df"),
+        "cust_df": st.session_state.get("ai_cust_df"),
+        "prod_df": st.session_state.get("ai_prod_df"),
+        "promo_df": st.session_state.get("ai_promo_df")
+    }
 tabs = st.tabs([
     "📘 Instructions", 
     "🗂️ File Mapping",
