@@ -121,10 +121,14 @@ def classify_and_extract_data(uploaded_files):
     inventory, file_dfs = build_column_inventory(uploaded_files)
     final_data = {}
     all_mappings = {}
-    confirmed = False
+
+    # Initialize confirmation state
+    if "confirmed" not in st.session_state:
+        st.session_state["confirmed"] = False
 
     for role in REQUIRED_FIELDS:
         st.markdown(f"### 📄 Mapping for `{role}`")
+
         auto_mapping = auto_map_fields(role, inventory)
         manual_mapping = {}
         missing = [f for f in REQUIRED_FIELDS[role] if f not in auto_mapping]
@@ -133,7 +137,11 @@ def classify_and_extract_data(uploaded_files):
             st.warning(f"Manual mapping needed for `{role}`: {', '.join(missing)}")
             all_cols = sorted({col for _, df in file_dfs for col in df.columns})
             for field in missing:
-                selected_col = st.selectbox(f"Select column for `{field}`", ["--"] + all_cols, key=f"{role}_{field}")
+                selected_col = st.selectbox(
+                    f"Select column for `{field}`",
+                    ["--"] + all_cols,
+                    key=f"{role}_{field}"
+                )
                 if selected_col and selected_col != "--":
                     for fname, df in file_dfs:
                         if selected_col in df.columns:
@@ -142,23 +150,24 @@ def classify_and_extract_data(uploaded_files):
 
         all_mappings[role] = {**auto_mapping, **manual_mapping}
 
-    # Display confirm button and only return when clicked
-    if st.button("✅ Confirm and Start Analytics"):
-        confirmed = True
+    # Show confirmation button once
+    if not st.session_state["confirmed"]:
+        if st.button("✅ Confirm and Start Analytics"):
+            st.session_state["confirmed"] = True
+            st.rerun()
+        return None, None
 
-    if confirmed:
-        for role, mapping in all_mappings.items():
-            fields = list(REQUIRED_FIELDS[role].keys())
-            df = build_dataframe_from_mapping(mapping, fields)
-            final_data[role] = df
+    # If confirmed, build final dataframes
+    for role, mapping in all_mappings.items():
+        required_fields = list(REQUIRED_FIELDS[role].keys())
+        df = build_dataframe_from_mapping(mapping, required_fields)
+        final_data[role] = df
 
-        ai_data = {
-            "txns_df": final_data.get("Transactions"),
-            "customers_df": final_data.get("Customers"),
-            "products_df": final_data.get("Products"),
-            "promotions_df": final_data.get("Promotions"),
-        }
+    ai_data = {
+        "txns_df": final_data.get("Transactions"),
+        "customers_df": final_data.get("Customers"),
+        "products_df": final_data.get("Products"),
+        "promotions_df": final_data.get("Promotions"),
+    }
 
-        return final_data, ai_data
-
-    return None, None
+    return final_data, ai_data
