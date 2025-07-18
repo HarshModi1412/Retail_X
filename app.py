@@ -130,7 +130,8 @@ with tabs[1]:
 
         if not st.session_state.get("files_mapped"):
             mapped_data, new_ai_context = classify_and_extract_data(uploaded_files)
-            ai_context.update(new_ai_context or {})
+            if isinstance(new_ai_context, dict):
+                ai_context.update(new_ai_context)
 
 
 
