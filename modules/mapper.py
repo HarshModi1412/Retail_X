@@ -22,7 +22,7 @@ REQUIRED_FIELDS = {
         "Invoice ID": ["invoice_id", "bill_no", "invoice number", "InvoiceNo", "Invoice No",'orderid','order id','order_id'],
         "Date": ["date", "invoice_date", "purchase_date", "Invoicedate",'orderdate','order date'],
         "Sub Category": ["subcat", "product_type", "subcategory","sub-category"],
-        "Invoice Total": ["amount", "invoice_amount", "total_amount", "grand_total"],
+        "Invoice Total": ["amount", "invoice_amount", "total_amount", "grand_total","Sales","sales"],
         "Quantity": ["qty", "units", "number of items"],
         "Discount": ["discount_amt", "disc", "offer_discount", "discount"],
         "Description": ["offer", "promo_desc", "discount name", "description"],
