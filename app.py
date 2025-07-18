@@ -129,7 +129,9 @@ with tabs[1]:
         st.markdown("### 🧩 Column Mapping for Each File")
 
         if not st.session_state.get("files_mapped"):
-            mapped_data, ai_data = classify_and_extract_data(uploaded_files)
+            mapped_data, new_ai_context = classify_and_extract_data(uploaded_files)
+            ai_context.update(new_ai_context or {})
+
 
 
             if mapped_data:
