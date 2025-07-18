@@ -117,6 +117,10 @@ def build_dataframe_from_mapping(mapping, required_fields):
     return df
 
 def classify_and_extract_data(uploaded_files):
+    # Don't re-map if already mapped
+    if st.session_state.get("files_mapped"):
+        return None, st.session_state.get("ai_context")
+
     inventory, file_dfs = build_column_inventory(uploaded_files)
     final_data = {}
     all_mappings = {}
@@ -143,9 +147,6 @@ def classify_and_extract_data(uploaded_files):
 
     # Display confirm button and only return mapped data when clicked
     if st.button("✅ Confirm and Start Analytics"):
-        confirmed = True
-
-    if confirmed:
         for role, mapping in all_mappings.items():
             fields = list(REQUIRED_FIELDS[role].keys())
             df = build_dataframe_from_mapping(mapping, fields)
@@ -158,9 +159,11 @@ def classify_and_extract_data(uploaded_files):
             "promotions_df": final_data.get("Promotions"),
         }
 
-        # ✅ Save mapping to session
+        # ✅ Save to session
         st.session_state["ai_context"] = ai_data
+        st.session_state["files_mapped"] = True
         st.success("✅ Mapping confirmed and data loaded!")
-        st.rerun()  # rerun to move to analytics
+        st.rerun()
 
     return None, None
+
