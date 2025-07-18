@@ -4,11 +4,11 @@ import json
 import chardet
 import requests
 import re
+import numpy as np
 from io import BytesIO
 import plotly.express as px
 
 # --- Configuration ---
-# --- Gemini API Setup ---
 GEMINI_API_KEY = "AIzaSyD9DfnqPz7vMgh5aUHaMAVjeJbg20VZMvU"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
@@ -42,19 +42,7 @@ def extract_json_from_text(text):
         st.warning(f"⚠️ extract_json_from_text error: {e}")
     return ""
 
-# --- Load File ---
-def load_file(file):
-    raw = file.read()
-    if file.name.endswith(".csv"):
-        encoding = chardet.detect(raw)["encoding"] or "utf-8"
-        return pd.read_csv(BytesIO(raw), encoding=encoding)
-    elif file.name.endswith(".xlsx"):
-        return pd.read_excel(BytesIO(raw), engine="openpyxl")
-    else:
-        st.error("Unsupported format.")
-        return pd.DataFrame()
-
-# --- Fuzzy Column Matching Helper ---
+# --- Fuzzy Column Matching ---
 def fuzzy_match(col, candidates):
     col = col.lower().replace(" ", "")
     for candidate in candidates:
@@ -85,25 +73,21 @@ For each KPI, return JSON using this structure:
     "operation": "SUM / COUNT / AVERAGE / custom logic",
     "aggregation_map": {{
         "Column A": "SUM",
-        "Column B": "COUNT_DISTINCT",
-        ...
+        "Column B": "COUNT_DISTINCT"
     }},
-    "group_by": ["Column X"],  // Optional, can be empty list
+    "group_by": ["Column X"],
     "filter": {{
         "column": "Offer Type",
         "value": "Yes"
-    }},  // Optional, can be null
+    }},
     "why": "Why this KPI is important"
   }}
 ]
 
-🛑 Do NOT include formulas as strings like "SUM(X) / COUNT(Y)" — instead, break it down into "aggregation_map" and "operation" as shown above.
-
-✅ Do NOT include markdown, explanation, or commentary. Return JSON only.
+🛑 Do NOT include formulas as strings.
+✅ Return JSON only.
 """
     raw = ask_llm(prompt)
-    #st.subheader("🔍 Gemini Raw Response")
-    #st.code(raw)
     cleaned = extract_json_from_text(raw)
     try:
         return json.loads(cleaned)
@@ -112,18 +96,13 @@ For each KPI, return JSON using this structure:
         st.code(cleaned)
         return []
 
-
-# --- Calculate KPIs with Fuzzy Matching & Parsing ---
-import numpy as np
-
+# --- KPI Calculation ---
 def calculate_kpis(df, kpi_definitions):
     results = []
 
     for kpi in kpi_definitions:
         try:
             temp_df = df.copy()
-
-            # Step 1: Apply filter if defined
             filter_info = kpi.get("filter")
             if filter_info:
                 filter_col = fuzzy_match(filter_info["column"], df.columns)
@@ -132,7 +111,6 @@ def calculate_kpis(df, kpi_definitions):
                 else:
                     raise ValueError(f"Filter column '{filter_info['column']}' not found")
 
-            # Step 2: Apply aggregation to each required column
             agg_results = {}
             for col_key, agg_type in kpi["aggregation_map"].items():
                 actual_col = fuzzy_match(col_key, df.columns)
@@ -150,29 +128,20 @@ def calculate_kpis(df, kpi_definitions):
                 else:
                     raise ValueError(f"Unsupported aggregation: {agg_type}")
 
-            # Step 3: Combine values based on 'operation'
             op = kpi["operation"].upper()
+            keys = list(agg_results.keys())
 
-            if op == "SUM":
-                # If only one key, return it directly
-                val = list(agg_results.values())[0]
-            elif op == "AVERAGE":
-                val = list(agg_results.values())[0]
-            elif op == "COUNT" or op == "COUNT_DISTINCT":
-                val = list(agg_results.values())[0]
+            if op == "SUM" or op == "AVERAGE" or op == "COUNT" or op == "COUNT_DISTINCT":
+                val = agg_results[keys[0]]
             elif op == "DIVIDE":
-                keys = list(agg_results.keys())
                 val = agg_results[keys[0]] / agg_results[keys[1]] if agg_results[keys[1]] != 0 else 0
             elif op == "MULTIPLY":
-                keys = list(agg_results.keys())
                 val = agg_results[keys[0]] * agg_results[keys[1]]
             elif op == "RATIO":
-                keys = list(agg_results.keys())
                 val = agg_results[keys[0]] / agg_results[keys[1]] if agg_results[keys[1]] != 0 else 0
             else:
                 raise ValueError(f"Unsupported operation: {op}")
 
-            # Finalize value
             kpi["value"] = round(val, 2) if isinstance(val, (int, float, np.float64)) else val
 
         except Exception as e:
@@ -193,7 +162,7 @@ def get_mock_benchmarks(kpis):
             kpi["benchmark"] = "N/A"
     return kpis
 
-# --- Get Insights ---
+# --- Generate Insights ---
 def get_comparative_insights(kpi_list, industry, scale, goal):
     prompt = f"""
 You are a McKinsey consultant. Based on these KPIs for a company in {industry}, scale {scale}, goal: {goal}, give 3-5 insights.
@@ -210,8 +179,6 @@ KPIs:
 {kpi_list}
 """
     raw = ask_llm(prompt)
-    #st.subheader("🔍 Gemini Raw Insight Response")
-    #st.code(raw)
     cleaned = extract_json_from_text(raw)
     try:
         return json.loads(cleaned)
@@ -233,7 +200,7 @@ def plot_kpi_comparison(kpis):
         st.error(f"Chart error: {e}")
         return None
 
-# --- Streamlit UI ---
+# --- Main KPI Analyst App ---
 def run_kpi_analyst(ai_context):
     st.title("📊 AI KPI Analyst with Benchmarking")
 
@@ -274,6 +241,3 @@ def run_kpi_analyst(ai_context):
             st.markdown(f"- **Decision:** {ins.get('decision')}")
             st.markdown(f"- **Action:** {ins.get('action')}")
             st.markdown(f"- **Estimated Impact:** {ins.get('estimated impact')}")
-
-if __name__ == "__main__":
-    run_kpi_analyst()
