@@ -234,29 +234,27 @@ def plot_kpi_comparison(kpis):
         return None
 
 # --- Streamlit UI ---
-def run_kpi_analyst():
-    st.set_page_config(page_title="📊 AI KPI Analyst", layout="wide")
+def run_kpi_analyst(ai_context):
     st.title("📊 AI KPI Analyst with Benchmarking")
 
-    file = st.file_uploader("Upload your CSV or Excel file", type=["csv", "xlsx"])
+    if not ai_context or "txns_df" not in ai_context:
+        st.warning("⚠️ No data available. Please upload and map your files first.")
+        return
+
+    df = ai_context["txns_df"]
+
+    st.subheader("🔍 Data Preview")
+    st.dataframe(df.head(15))
+
     industry = st.text_input("Industry", placeholder="e.g., Retail, SaaS, Manufacturing")
     scale = st.text_input("Business Scale", placeholder="e.g., Small, Mid-size, Enterprise")
     goal = st.text_area("Business Goal or Problem Statement")
 
-    if file and industry and scale and goal:
-        df = load_file(file)
-        if df.empty:
-            return
-
-        st.subheader("🔍 Data Preview")
-        st.dataframe(df.head(15))
-
-        #st.subheader("🧮 Suggested KPIs")
+    if industry and scale and goal:
         kpi_defs = get_kpi_list(df.head(15).to_string(index=False), industry, scale, goal)
         if not kpi_defs:
             st.warning("⚠️ No KPI definitions found.")
             return
-        #st.json(kpi_defs)
 
         st.subheader("✅ Calculated KPIs")
         kpi_with_values = calculate_kpis(df, kpi_defs)
