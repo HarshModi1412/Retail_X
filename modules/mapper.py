@@ -1,49 +1,42 @@
 import streamlit as st
 import pandas as pd
 from collections import defaultdict
-
-
 import chardet
 
-
+# --- Read CSV with encoding detection ---
 def read_csv_with_encoding(file):
     raw_bytes = file.read()
-    result = chardet.detect(raw_bytes)
-    encoding = result['encoding'] or 'utf-8'
+    encoding = chardet.detect(raw_bytes)["encoding"] or "utf-8"
     file.seek(0)
+    return pd.read_csv(file, encoding=encoding, encoding_errors="replace")
 
-    return pd.read_csv(file, encoding=encoding, encoding_errors='replace')
-
-
-
-# Canonical field dictionary with aliases
+# --- Canonical Field Mapping ---
 REQUIRED_FIELDS = {
     "Transactions": {
-        "Invoice ID": ["invoice_id", "bill_no", "invoice number", "InvoiceNo", "Invoice No",'orderid','order id','order_id'],
-        "Date": ["date", "invoice_date", "purchase_date", "Invoicedate",'orderdate','order date'],
-        "Sub Category": ["subcat", "product_type", "subcategory","sub-category"],
+        "Invoice ID": ["invoice_id", "bill_no", "invoice number", "InvoiceNo", "Invoice No", "orderid", "order id", "order_id"],
+        "Date": ["date", "invoice_date", "purchase_date", "Invoicedate", "orderdate", "order date"],
+        "Sub Category": ["subcat", "product_type", "subcategory", "sub-category"],
         "Invoice Total": ["amount", "invoice_amount", "total_amount", "grand_total"],
         "Quantity": ["qty", "units", "number of items"],
         "Discount": ["discount_amt", "disc", "offer_discount", "discount"],
         "Description": ["offer", "promo_desc", "discount name", "description"],
         "Transaction Type": ["transaction_type", "type", "return"],
         "Production Cost": ["cost", "production_cost", "item_cost"],
-        # New field: unit cost, to compute production cost if given
         "Unit Cost": ["unit_cost", "unit cost", "cost per unit"],
-        "Product ID": ["prod_id", "item_code", "stockcode",'ProductID'],
+        "Product ID": ["prod_id", "item_code", "stockcode", "ProductID"],
         "Customer ID": ["customer", "cust_id", "cust number", "client_id", "CustomerID"],
         "Unit Price": ["unit", "price", "unit_price", "product price", "unitprice"]
     },
     "Customers": {
         "Customer ID": ["customer", "cust_id", "cust number", "client_id", "CustomerID"],
         "Gender": ["sex", "customer_gender"],
-        "Name": ["name", "NAME",'customer_name'],
+        "Name": ["name", "NAME", "customer_name"],
         "Telephone": ["telephone", "phone", "number"],
         "Email": ["email", "mail"],
         "Date Of Birth": ["date_of_birth", "dob"]
     },
     "Products": {
-        "Product ID": ["prod_id", "item_code", "stockcode",'ProductID'],
+        "Product ID": ["prod_id", "item_code", "stockcode", "ProductID"],
         "Sub Category": ["subcategory", "subcat", "product_type", "catagory"],
         "Category": ["cat", "product_cat", "segment"]
     },
@@ -55,55 +48,47 @@ REQUIRED_FIELDS = {
     }
 }
 
-IMPORTANT_FIELDS = ["Invoice Total", "Quantity", "Unit Price"]
-
-# --- Helper Functions ---
+# --- Normalization ---
 def normalize(col: str) -> str:
     return col.strip().lower().replace(" ", "_")
 
+# --- Build inventory of columns across files ---
 def build_column_inventory(files):
     inventory = defaultdict(list)
     file_dfs = []
 
     for file in files:
         try:
-            # Detect file format
-            file_ext = file.name.lower().split('.')[-1]
-
-            # Load file with encoding handling
-            if file_ext == "csv":
+            ext = file.name.lower().split('.')[-1]
+            if ext == "csv":
                 df = read_csv_with_encoding(file)
-            elif file_ext in ("xlsx", "xls"):
+            elif ext in ("xls", "xlsx"):
                 df = pd.read_excel(file, engine="openpyxl")
             else:
-                st.warning(f"⚠️ Unsupported file format: {file.name}")
+                st.warning(f"Unsupported file format: {file.name}")
                 continue
 
-            # Store loaded file and its columns
             file_dfs.append((file.name, df))
             for col in df.columns:
-                normalized = normalize(col)
-                inventory[normalized].append((file.name, col, df[col]))
+                inventory[normalize(col)].append((file.name, col, df[col]))
 
         except Exception as e:
-            st.error(f"❌ Error reading {file.name}: {e}")
+            st.error(f"❌ Failed to read {file.name}: {e}")
 
     return inventory, file_dfs
 
-
-
+# --- Auto-map fields using aliases ---
 def auto_map_fields(role, inventory):
     mapping = {}
     for field, aliases in REQUIRED_FIELDS[role].items():
-        candidates = [normalize(field)] + [normalize(a) for a in aliases]
-        for c in candidates:
-            if c in inventory:
-                mapping[field] = inventory[c][0]
+        for alias in [normalize(field)] + [normalize(a) for a in aliases]:
+            if alias in inventory:
+                mapping[field] = inventory[alias][0]
                 break
     return mapping
 
+# --- Build final DataFrame from mapped fields ---
 def build_dataframe_from_mapping(mapping, required_fields):
-    # Step 1: Pull in each mapped series
     columns = {}
     max_len = 0
     for field, (_, _, series) in mapping.items():
@@ -111,22 +96,19 @@ def build_dataframe_from_mapping(mapping, required_fields):
         columns[field] = s
         max_len = max(max_len, len(s))
 
-    # Step 2: Build DataFrame skeleton
     df = pd.DataFrame({field: columns.get(field, pd.Series([pd.NA] * max_len))
                        for field in required_fields})
 
-    # Step 3: If Invoice Total missing or all null, compute from Unit Price & Quantity
-    if "Invoice Total" in required_fields:
-        if df["Invoice Total"].isnull().all() and {"Unit Price", "Quantity"}.issubset(df):
+    if "Invoice Total" in required_fields and df["Invoice Total"].isnull().all():
+        if "Unit Price" in df.columns and "Quantity" in df.columns:
             df["Invoice Total"] = (
                 pd.to_numeric(df["Unit Price"], errors="coerce") *
                 pd.to_numeric(df["Quantity"], errors="coerce")
             )
 
-    # Step 4: Compute Production Cost if missing but Unit Cost provided
     if "Production Cost" in required_fields:
-        prod_cost_null = df["Production Cost"].isnull().all() if "Production Cost" in df else True
-        if prod_cost_null and "Unit Cost" in df and "Quantity" in df:
+        missing = df.get("Production Cost", pd.Series()).isnull().all()
+        if missing and "Unit Cost" in df.columns and "Quantity" in df.columns:
             df["Production Cost"] = (
                 pd.to_numeric(df["Unit Cost"], errors="coerce") *
                 pd.to_numeric(df["Quantity"], errors="coerce")
@@ -134,47 +116,49 @@ def build_dataframe_from_mapping(mapping, required_fields):
 
     return df
 
+# --- Main function to classify, map, and return data ---
 def classify_and_extract_data(uploaded_files):
     inventory, file_dfs = build_column_inventory(uploaded_files)
     final_data = {}
     all_mappings = {}
+    confirmed = False
 
     for role in REQUIRED_FIELDS:
+        st.markdown(f"### 📄 Mapping for `{role}`")
         auto_mapping = auto_map_fields(role, inventory)
         manual_mapping = {}
         missing = [f for f in REQUIRED_FIELDS[role] if f not in auto_mapping]
-
-        st.markdown(f"### 🗂 Mapping for `{role}`")
 
         if missing:
             st.warning(f"Manual mapping needed for `{role}`: {', '.join(missing)}")
             all_cols = sorted({col for _, df in file_dfs for col in df.columns})
             for field in missing:
-                sel = st.selectbox(f"Select column for `{field}`", ["--"] + all_cols, key=f"{role}_{field}")
-                if sel and sel != "--":
+                selected_col = st.selectbox(f"Select column for `{field}`", ["--"] + all_cols, key=f"{role}_{field}")
+                if selected_col and selected_col != "--":
                     for fname, df in file_dfs:
-                        if sel in df.columns:
-                            manual_mapping[field] = (fname, sel, df[sel])
+                        if selected_col in df.columns:
+                            manual_mapping[field] = (fname, selected_col, df[selected_col])
                             break
 
-        combined = {**auto_mapping, **manual_mapping}
-        # add fallbacks if needed...
-        all_mappings[role] = combined
+        all_mappings[role] = {**auto_mapping, **manual_mapping}
 
+    # Display confirm button and only return when clicked
     if st.button("✅ Confirm and Start Analytics"):
+        confirmed = True
+
+    if confirmed:
         for role, mapping in all_mappings.items():
             fields = list(REQUIRED_FIELDS[role].keys())
             df = build_dataframe_from_mapping(mapping, fields)
             final_data[role] = df
+
         ai_data = {
-            "Transactions": final_data.get("Transactions").copy() if "Transactions" in final_data else None,
-            "Customers": final_data.get("Customers").copy() if "Customers" in final_data else None,
-            "Products": final_data.get("Products").copy() if "Products" in final_data else None,
-            "Promotions": final_data.get("Promotions").copy() if "Promotions" in final_data else None,
+            "txns_df": final_data.get("Transactions"),
+            "customers_df": final_data.get("Customers"),
+            "products_df": final_data.get("Products"),
+            "promotions_df": final_data.get("Promotions"),
         }
+
         return final_data, ai_data
 
-
-    return None
-
-
+    return None, None
