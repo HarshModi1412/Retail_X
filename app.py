@@ -91,16 +91,11 @@ promo_df = st.session_state.get("promo_df")
 tabs = st.tabs([
     "📘 Instructions", 
     "🗂️ File Mapping",
-    "📊 Sales Analytics",                                
+    "📊 Sales Analytics", 
+    "🔍 Sub-Category Drilldown Analysis",                               
     "📊 RFM Segmentation", 
-    "🏷️ Discount Effectiveness",  
-    "🧬 Customer Profiler", 
-    "🧭 Customer Journey Mapping",   
-    "🔍 Sub-Category Drilldown Analysis",
-    "💡 Dynamic Insights",
     "🤖 Business Analyst AI (BETA)",
-    "KPI based Analyst",
-    "Chatbot"
+    "🤖 Chatbot"
 ])     
 
 
@@ -150,6 +145,7 @@ with tabs[1]:
 # TAB 3: Sales Analytics
 with tabs[2]:
     st.subheader("📊 Sales Analytics Overview")
+    
     if txns_df is None:
         st.warning("📂 Please upload the Transactions CSV file to begin.")
     else:
@@ -163,8 +159,32 @@ with tabs[2]:
         else:
             render_sales_analytics(txns_df)
 
-# TAB 4: RFM Segmentation
+            # Add dynamic insights section (from TAB 9)
+            st.markdown("---")
+            st.subheader("💡 Smart Narrative & Dynamic Insights")
+            insights = generate_sales_insights(txns_df)
+            generate_dynamic_insights(insights)
+
+# TAB 4: Sub-Category Drilldown Analysis
 with tabs[3]:
+    st.subheader("🔍 Sub-Category Drilldown Analysis")
+
+    if txns_df is None:
+        st.warning("📂 Please upload your Transactions file to proceed.")
+    else:
+        if "start_subcat_analysis" not in st.session_state:
+            st.session_state.start_subcat_analysis = False
+
+        if st.session_state.start_subcat_analysis:
+            render_subcategory_trends(txns_df)
+        else:
+            st.info("Click the button below to begin analyzing sub-category trends.")
+            if st.button("▶️ Start Sub-Category Analysis"):
+                st.session_state.start_subcat_analysis = True
+                st.rerun()
+
+# TAB 5: RFM Segmentation
+with tabs[4]:
     st.subheader("🚦 RFM Segmentation Analysis")
     if txns_df is None:
         st.warning("⚠️ Please upload the Transactions CSV file to proceed.")
@@ -207,98 +227,20 @@ with tabs[3]:
                 except Exception as e:
                     st.error(f"⚠️ Error generating message: {e}")
 
-# TAB 5: Discount Mapping
-with tabs[4]:
-    st.subheader("🏷️ Discount Campaign Performance & Uplift Analysis")
-    if promo_df is not None and txns_df is not None:
-        if st.button("▶️ Analyze Discount Impact"):
-            if 'Offer_Code' not in promo_df.columns:
-                promo_df = assign_offer_codes(promo_df)
-            discount_output = generate_discount_insights(txns_df, promo_df)
-            st.markdown("### 📊 Uplift Summary by Offer & Sub-Category")
-            st.dataframe(discount_output['uplift_summary'])
-            st.download_button("📥 Download Uplift Summary", discount_output['uplift_summary'].to_csv(index=False), "discount_uplift.csv")
-            st.markdown("---")
-            st.markdown(discount_output['recommendations'])
-    else:
-        st.info("📎 Please upload both the Promotions and Transactions CSV files.")
-
-# TAB 6: Customer Profiler
+# Combined TAB 6: Business Analyst + KPI Analyst AI
 with tabs[5]:
-    st.subheader("👤 Customer Profiler")
-    if not all([txns_df is not None, cust_df is not None, prod_df is not None]):
-        st.warning("Please upload Transactions, Customers, and Products CSVs.")
-    else:
-        customer_id = st.number_input("Enter Customer ID to Profile", step=1, format="%d")
-        if st.button("Generate Customer Profile"):
-            profile = generate_customer_profile(customer_id, txns_df, cust_df, prod_df)
-            if profile is not None:
-                st.success("✅ Profile Generated")
-                st.dataframe(profile)
-            else:
-                st.error("No data found for this customer.")
-
-# TAB 7: Customer Journey Mapping
-with tabs[6]:
-    st.subheader("🧭 Customer Journey Mapping & Product Affinity")
-    if txns_df is None:
-        st.warning("🚨 Please upload the Transactions CSV to proceed.")
-    else:
-        customer_id = st.number_input("🔍 Enter Customer ID to Analyze", min_value=1, step=1)
-        if st.button("🚀 Run Journey & Affinity Analysis"):
-            journey_output = map_customer_journey_and_affinity(txns_df, customer_id=customer_id)
-            journey_df = journey_output.get('journey_path')
-            transitions_df = journey_output.get('journey_transitions')
-            affinity_df = journey_output.get('affinity_pairs')
-
-            if journey_df is not None and not journey_df.empty:
-                rec = generate_behavioral_recommendation_with_impact(customer_id, journey_df, affinity_df, txns_df)
-                st.success("✅ Analysis Complete!")
-                st.markdown("### 📜 Recommendation Summary")
-                st.text(rec)
-                st.markdown("### 📉 Customer Journey Transitions")
-                st.dataframe(transitions_df.head(20))
-                st.markdown("### 🔗 Top Product Affinity Pairs")
-                st.dataframe(affinity_df.sort_values(by='Count', ascending=False).head(10))
-                st.download_button("📥 Download Recommendation", rec, file_name=f"recommendation_{customer_id}.txt")
-            else:
-                st.warning(f"❗ No valid journey path found for Customer ID {customer_id}. Try another.")
-
-# TAB 8: Sub-Category Drilldown Analysis
-with tabs[7]:
-    st.subheader("🔍 Sub-Category Drilldown Analysis")
-
-    if txns_df is None:
-        st.warning("📂 Please upload your Transactions file to proceed.")
-    else:
-        if "start_subcat_analysis" not in st.session_state:
-            st.session_state.start_subcat_analysis = False
-
-        if st.session_state.start_subcat_analysis:
-            render_subcategory_trends(txns_df)
-        else:
-            st.info("Click the button below to begin analyzing sub-category trends.")
-            if st.button("▶️ Start Sub-Category Analysis"):
-                st.session_state.start_subcat_analysis = True
-                st.rerun()
-# TAB 9: Dynamic Insights
-with tabs[8]:
-    st.subheader("💡 Smart Narrative & Dynamic Insights")
-    if txns_df is None:
-        st.warning("📂 Please upload the Transactions file first.")
-    else:
-        insights = generate_sales_insights(txns_df)
-        generate_dynamic_insights(insights)
-# TAB 10: Business Analyst AI
-with tabs[9]:
+    st.subheader("🧠 Business Analyst AI + KPI Analyst")
+    
+    # Run Business Analyst functionality
     BA.run_business_analyst_tab()
-
-# TAB 11: Business KPI Analyst AI
-with tabs[10]:
+    
+    st.markdown("---")  # Visual separation
+    
+    # Run KPI Analyst functionality
     KPI_analyst.run_kpi_analyst()
 
-# TAB 12: Business Chatbot AI
-with tabs[11]:
+# TAB 7: Business Chatbot AI
+with tabs[6]:
     chatbot2.run_chat()
 
 # Sidebar Reset
