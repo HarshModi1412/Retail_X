@@ -87,15 +87,7 @@ txns_df = st.session_state.get("txns_df")
 cust_df = st.session_state.get("cust_df")
 prod_df = st.session_state.get("prod_df")
 promo_df = st.session_state.get("promo_df")
-# AI-specific copies (read only once)
-ai_context = None
-if st.session_state["files_mapped"]:
-    ai_context = {
-        "txns_df": st.session_state.get("ai_txns_df"),
-        "cust_df": st.session_state.get("ai_cust_df"),
-        "prod_df": st.session_state.get("ai_prod_df"),
-        "promo_df": st.session_state.get("ai_promo_df")
-    }
+
 tabs = st.tabs([
     "📘 Instructions", 
     "🗂️ File Mapping",
@@ -178,6 +170,18 @@ with tabs[2]:
             st.subheader("💡 Smart Narrative & Dynamic Insights")
             insights = generate_sales_insights(txns_df)
             generate_dynamic_insights(insights)
+
+
+# After successful mapping in Tab 2
+if st.session_state["files_mapped"]:
+    ai_context = {
+        "txns_df": st.session_state.get("ai_txns_df"),
+        "cust_df": st.session_state.get("ai_cust_df"),
+        "prod_df": st.session_state.get("ai_prod_df"),
+        "promo_df": st.session_state.get("ai_promo_df")
+    }
+else:
+    ai_context = None
 
 # TAB 4: Sub-Category Drilldown Analysis
 with tabs[3]:
