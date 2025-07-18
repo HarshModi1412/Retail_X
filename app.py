@@ -118,7 +118,8 @@ with tabs[1]:
         st.markdown("### 🧩 Column Mapping for Each File")
 
         if not st.session_state.get("files_mapped"):
-            mapped_data = classify_and_extract_data(uploaded_files)
+            mapped_data, ai_data = classify_and_extract_data(uploaded_files)
+
 
             if mapped_data:
                 # Only now save to session
@@ -126,6 +127,11 @@ with tabs[1]:
                 st.session_state['cust_df'] = mapped_data.get("Customers")
                 st.session_state['prod_df'] = mapped_data.get("Products")
                 st.session_state['promo_df'] = mapped_data.get("Promotions")
+                st.session_state['ai_txns_df'] = ai_data.get("Transactions")
+                st.session_state['ai_cust_df'] = ai_data.get("Customers")
+                st.session_state['ai_prod_df'] = ai_data.get("Products")
+                st.session_state['ai_promo_df'] = ai_data.get("Promotions")
+
                 st.session_state["files_mapped"] = True
                 st.rerun()
         else:
